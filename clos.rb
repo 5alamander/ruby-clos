@@ -86,15 +86,30 @@ module Clos
   ### for generic function
   # add_method -> generic.addmethod
 
+  class GenericFunctor < Proc
+    attr_accessor :generic
+
+    def addMethod(*args, &impl)
+      Clos.addMethod(@generic, *args, &impl)
+    end
+
+    def to_s
+      "<GenericFunctor:#{@generic.to_s}>"
+    end
+
+  end
+
   class Generic
 
-    attr_reader :name, :options
+    attr_reader :name, :options, :functor
 
     # for test
     # attr_reader :methods, :befor, :after, :around, :primary
 
     def initialize(name, options = {})
+      # #TODO: options: the param count
       @options = {cache:false}.merge! options
+      @functor = nil
       @name = name
       @methods = []             # the methods in generic function
       # cache
@@ -103,9 +118,12 @@ module Clos
     end
 
     def functor                 # compute_apply_generic
-      proc { |*arguments|
+      return @functor if @functor
+      @functor = GenericFunctor.new { |*arguments|
         run(sort_method_with(arguments), arguments)
       }
+      @functor.generic = self
+      @functor
     end
 
     # add method to this generic
@@ -120,6 +138,11 @@ module Clos
       @methods.select! { |m| !is_specializers_same?(m, newm) }
       @methods.push newm         # add to last
       return newm
+    end
+
+    # more friendly method
+    def addMethod(*args, &impl)
+      Clos.addMethod(self, *args, &impl)
     end
 
     # static
@@ -155,8 +178,11 @@ module Clos
 
     # static
     # check if a class is applicable with arg
-    def is_applicable?(c, arg)
-      return arg.is_a? c
+    def is_applicable?(spec, arg)
+      #TODO: check if spec is class or value or genericFunctor
+      # spec is genericFunctor : my is_a?
+      return arg.is_a? spec if spec.class == Class
+      return arg == spec        # default is value
     end
 
     # static
@@ -181,7 +207,7 @@ module Clos
       # if arguments is nil, then use args
       proc do |*arguments|
         if methods.length == 0
-          raise("No applicable (next) methods in: " + @name + "\n" + args.to_s)
+          raise("No applicable (next) methods in: " + @name + "\n" + args.to_s + "\n" + arguments.to_s)
         end
         # for inner function optimize the last
         temp_args = arguments.length > 0 ? arguments : args
@@ -223,6 +249,10 @@ module Clos
 
     end
 
+    def to_s
+      "<GenericFunction:#{@name}>"
+    end
+
   end
 
   class Method
@@ -244,15 +274,37 @@ module Clos
 
     attr_reader :name, :qualifier, :specializers, :implementation
 
+    def to_s
+      "<GenericMethod:#{@name},#{@qualifier}"
+    end
+
   end
 
-  def self.defgeneric(name, option = {})
+  def self.defGeneric(name, option = {})
     Generic.new(name, option)
   end
 
   # add method to the generic
-  def self.addmethod(qualifier, generic, specs, &impl)
+  am = Generic.new("addmethod")
+  @@amf_M_generic = am.functor
+
+  def self.addMethod(*args, &impl)
+    @@amf_M_generic.(*args, impl)
+  end
+
+  am.addmethod :primary, [Symbol, Generic, Array, ::Proc] do
+    |qualifier, generic, specs, impl|
     generic.addmethod qualifier, specs, &impl
+  end
+
+  am.addmethod :primary, [Generic, Symbol, Array, ::Proc] do
+    |generic, qualifier, specs, impl|
+    generic.addmethod qualifier, specs, &impl
+  end
+
+  am.addmethod :primary, [Generic, Array, ::Proc, nil] do
+    |generic, specs, impl|
+    generic.addmethod :primary, specs, &impl
   end
 
   # #TODO: ClosObject

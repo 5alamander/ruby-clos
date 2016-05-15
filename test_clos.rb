@@ -26,4 +26,39 @@ class TestClos < Test::Unit::TestCase
     assert_equal tf[1, [1,2,3]], "default"
   end
 
+  def test_Generic_nextMethod
+    t = Clos::Generic.new "test"
+    tf = t.functor
+    t.addmethod(:primary, [Object, Object]) { |o1, o2| "default"}
+    t.addmethod(:primary, [Integer, Integer]) { |i1, i2|
+      nextMethod.call + "0"
+    }
+    assert_equal tf[1,1], "default0"
+  end
+
+  def test_Generic_defaultParam
+    t = Clos::Generic.new "test"
+    tf = t.functor
+    t.addmethod :primary, [Object, Object] { |o1, o2| "default"}
+    # pass one param, the rest is nil
+    assert_equal tf[1], "default"
+    # rewrite and reduce a param in block
+    t.addmethod :primary, [Object, Object] { |o1, o2| "default1"}
+    # use Clos.addmethod
+    Clos.addMethod(:primary, t, [Object, Object]) { |o1| "default1"}
+    Clos.addMethod(t, [Object, Object]) { |o1| "default1"}
+    assert_equal tf[1], "default1"
+    # use friendly addMethod
+    t.addMethod([Object, Object]) { "default1" }
+    assert_equal tf[1], "default1"
+  end
+
+  def test_Generic_ValueDefine
+    t = Clos::Generic.new "test"
+    tf = t.functor
+    t.addMethod [Object, Object] {:default}
+    t.addMethod [Integer, 1] {:value}
+    assert_equal tf[1,1], :value
+    assert_equal tf[1,3], :default
+  end
 end
