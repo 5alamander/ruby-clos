@@ -52,4 +52,45 @@
      #+END_SRC
     
 *** Object init
-    ...
+    
+**** initialize
+     With the native Ruby OO System
+     #+BEGIN_SRC ruby
+       # Human -|> Hand
+       # Human -|> Body
+       module Hand
+         attr_accessor :a
+       end
+
+       module Body
+         attr_accessor :b
+       end
+
+       class Human
+         include Hand
+         include Body
+         attr_accessor :v
+       end
+
+       Clos.init.addMethod [Human] { |h|
+         h.v = "v"
+       }
+       # before init Body
+       Clos.init.addMethod :before, [Body] { |b|
+         b.b = "b"
+       }
+       # after init Hand
+       Clos.init.addMethod :after, [Hand] { |h|
+         h.a = "a"
+       }
+
+       instance = Clos.new(Human)
+       instance.a # => "a"
+       instance.b # => "b"
+       instance.v # => "v"
+     #+END_SRC
+
+**** 
+     
+** TODO
+   ....
