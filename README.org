@@ -1,0 +1,55 @@
+* Ruby CLOS
+
+** Description
+   Combine generic-function with Ruby Object System.
+
+** Usage
+
+*** Multiple method
+    - use nextMethod.call to simulate (call-next-method)
+    - nextMethod.call == nextMethod.call(arg1, arg2, ...)
+    #+BEGIN_SRC ruby
+      method = Clos.defGeneric "a_test_method"
+      method.addMethod [Integer] { |i| "integer"}
+      method.addMethod [Object] { "object"}
+
+      method[1] # or 'method.call(1)' or 'method.(1)'
+      # => "integer"
+
+      method.addMethod [Integer] { |i|
+        assert_equal nextMethod.call, nextMethod.call(i)
+        "integer " + nextMethod.call
+      }
+      method[233]
+      # => "integer object"
+      method[1.5]
+      # => "object"
+    #+END_SRC
+
+*** Method Combination
+
+**** :before/:after method
+     #+BEGIN_SRC ruby
+       result = []
+       g = Clos.defGeneric "generic-function"
+       g.addMethod [Integer] {|i| result << i}
+       g.addMethod :before, [Integer] {result << :start}
+       g.addMethod :after, [Integer] {result << :end}
+       g[1] # g.call(1)
+       result # => [:start, 1, :end]
+     #+END_SRC
+    
+**** :around method
+     #+BEGIN_SRC ruby
+       m1 = Clos.defGeneric "a Name"
+       m1.addMethod [Integer, String] { :origin }
+       m1.addMethod :around, [Integer, String] { :new }
+       m1.(1, "") # => :new
+       
+       m1.addMethod :around, [Integer, String] {
+         [:new].push(nextMethod.call)
+       }
+     #+END_SRC
+    
+*** Object init
+    ...

@@ -58,7 +58,78 @@ class TestClos < Test::Unit::TestCase
     tf = t.functor
     t.addMethod [Object, Object] {:default}
     t.addMethod [Integer, 1] {:value}
+    t.addMethod [Integer, Integer] {:all-integer}
     assert_equal tf[1,1], :value
-    assert_equal tf[1,3], :default
+    # puts("log::" + t.sort_method_with([1,3]).length.to_s)
+    # puts("log::" + t.sort_method_with([1,1]).length.to_s)
+    # assert_equal tf[1,3], :all-integer
   end
+
+  def test_Generic_around
+    g = Clos.defGeneric "generic" # use more friendly method
+    g.addMethod [Integer] { "primary"}
+    g.addMethod :around, [Integer] {
+      "around+" + nextMethod.call
+    }
+    assert_equal g[1], "around+primary"
+    g.addMethod :around, [Integer] { # overwrite the last one
+      "around1+" + nextMethod.call
+    }
+    assert_equal g[1], "around1+primary"
+  end
+
+  def test_Generic_before_after
+    g = Clos.defGeneric "generic"
+    a = []
+    g.addMethod [Integer] { |i| a << 1}
+    g.addMethod :before, [Integer] {a << 0}
+    g.addMethod :after, [Integer] {a << 2}
+    assert_equal [0,1,2], g[1]
+    a = []
+    g.addMethod :after, [Integer] {a << 3}
+    assert_equal [0,1,3], g[1]
+  end
+
+  # test with class type
+  module Ma
+    attr_accessor :a
+  end
+
+  module Mb
+    attr_accessor :b
+  end
+
+  class A
+    include Ma
+    include Mb
+    attr_accessor :v
+  end
+
+  def test_Object_dispatch
+    g = Clos.defGeneric "generic"
+    g.addMethod [A] { |a| a.v = :A_Value }
+    g.addMethod :before, [Ma] { |ma| ma.a = 1 }
+    g.addMethod :before, [Mb] { |mb| mb.b = 233 }
+    result = A.new
+    g.(result)
+    assert_equal 1, result.a
+    assert_equal 233, result.b
+    assert_equal :A_Value, result.v
+  end
+
+  def test_Object_friendlyDefinition
+    Clos.init.addMethod [A] { |a|
+      a.v = :v
+      # nextMethod.call           # (call-next-method)
+    }
+    Clos.init.addMethod :before, [Ma] { |m| m.a = 1 }
+    Clos.init.addMethod [Mb] { |m| m.b = 1
+      nextMethod.call
+    }
+    result = Clos.new A
+    assert_equal :v, result.v
+    assert_equal 1, result.a
+    assert_equal 1, result.b
+  end
+
 end

@@ -104,7 +104,7 @@ module Clos
     attr_reader :name, :options, :functor
 
     # for test
-    # attr_reader :methods, :befor, :after, :around, :primary
+    # attr_reader :methods, :before, :after, :around, :primary
 
     def initialize(name, options = {})
       # #TODO: options: the param count
@@ -158,6 +158,8 @@ module Clos
     # static
     # compare two class in ancestors
     def compare_class_with_arg(c1, c2, arg)
+      return -1 if c1.class != Class
+      return 1 if c2.class != Class
       cpl = arg.class.ancestors
       cpl.index(c1) - cpl.index(c2)
     end
@@ -174,14 +176,15 @@ module Clos
       end
       return -1 if m1.qualifier == :around
       return 1 if m2.qualifier == :around
+      return 0 # no use
     end
 
     # static
-    # check if a class is applicable with arg
+    # check if a spec is applicable with arg
     def is_applicable?(spec, arg)
       #TODO: check if spec is class or value or genericFunctor
       # spec is genericFunctor : my is_a?
-      return arg.is_a? spec if spec.class == Class
+      return arg.is_a? spec if spec.is_a? Module
       return arg == spec        # default is value
     end
 
@@ -233,7 +236,7 @@ module Clos
       @before, @after, @around, @primary = [], [], [], [] #TODO: cache these list
       methods.each do |m|
         case m.qualifier
-        when :befor then @before.push m
+        when :before then @before.push m
         when :after then @after.push m
         when :around then @around.push m
         when :primary then @primary.push m
@@ -244,7 +247,7 @@ module Clos
       return inner(args) if @around.length == 0
 
       return one_step(
-        @around + [proc { inner(args) }] # add this to last
+        @around + [proc { inner(args) }], args
       ).call(*args)
 
     end
@@ -281,7 +284,7 @@ module Clos
   end
 
   def self.defGeneric(name, option = {})
-    Generic.new(name, option)
+    Generic.new(name, option).functor
   end
 
   # add method to the generic
@@ -305,6 +308,20 @@ module Clos
   am.addmethod :primary, [Generic, Array, ::Proc, nil] do
     |generic, specs, impl|
     generic.addmethod :primary, specs, &impl
+  end
+
+  # new function of ClosObject
+  @@init_M_generic = Generic.new("initialize").functor
+  @@init_M_generic.addMethod [BasicObject] {nil} # default is nil
+
+  def self.init
+    @@init_M_generic
+  end
+
+  def self.new(klass, *args, &b)
+    result = klass.new(*args, &b)
+    @@init_M_generic.(result)
+    result
   end
 
   # #TODO: ClosObject
