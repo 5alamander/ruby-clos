@@ -107,7 +107,10 @@ module Clos
     # attr_reader :methods, :before, :after, :around, :primary
 
     def initialize(name, options = {})
-      # #TODO: options: the param count
+      # #TODO: options:
+      # - the param count
+      # - cache : default is true
+      # - single_method : without combination
       @options = {cache:false}.merge! options
       @functor = nil
       @name = name
@@ -158,8 +161,8 @@ module Clos
     # static
     # compare two class in ancestors
     def compare_class_with_arg(c1, c2, arg)
-      return -1 if c1.class != Class
-      return 1 if c2.class != Class
+      return -1 if !c1.is_a?(Module)
+      return 1 if !c2.is_a?(Module)
       cpl = arg.class.ancestors
       cpl.index(c1) - cpl.index(c2)
     end
@@ -182,8 +185,6 @@ module Clos
     # static
     # check if a spec is applicable with arg
     def is_applicable?(spec, arg)
-      #TODO: check if spec is class or value or genericFunctor
-      # spec is genericFunctor : my is_a?
       return arg.is_a? spec if spec.is_a? Module
       return arg == spec        # default is value
     end

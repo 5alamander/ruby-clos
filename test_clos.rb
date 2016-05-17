@@ -54,15 +54,12 @@ class TestClos < Test::Unit::TestCase
   end
 
   def test_Generic_ValueDefine
-    t = Clos::Generic.new "test"
-    tf = t.functor
+    t = Clos.defGeneric "t"
     t.addMethod [Object, Object] {:default}
     t.addMethod [Integer, 1] {:value}
-    t.addMethod [Integer, Integer] {:all-integer}
-    assert_equal tf[1,1], :value
-    # puts("log::" + t.sort_method_with([1,3]).length.to_s)
-    # puts("log::" + t.sort_method_with([1,1]).length.to_s)
-    # assert_equal tf[1,3], :all-integer
+    t.addMethod [Integer, Integer] {:integer}
+    assert_equal t[1,1], :value
+    assert_equal t[1,3], :integer
   end
 
   def test_Generic_around
@@ -120,12 +117,11 @@ class TestClos < Test::Unit::TestCase
   def test_Object_friendlyDefinition
     Clos.init.addMethod [A] { |a|
       a.v = :v
-      # nextMethod.call           # (call-next-method)
+      nextMethod.call           # (call-next-method)
     }
     Clos.init.addMethod :before, [Ma] { |m| m.a = 1 }
-    Clos.init.addMethod [Mb] { |m| m.b = 1
-      nextMethod.call
-    }
+    Clos.init.addMethod [Mb] { |m| m.b = 1 }
+
     result = Clos.new A
     assert_equal :v, result.v
     assert_equal 1, result.a
